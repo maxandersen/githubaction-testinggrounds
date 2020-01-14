@@ -10,13 +10,13 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/.jbang
-          key: ${{ runner.os }}-maven-${{ hashFiles('.jbang/dependency_cache.txt') }}
+          key: ${{ runner.os }}-maven-${{ hashFiles('*.java') }}
           restore-keys: |
             ${{ runner.os }}-jbang-
       - uses: actions/cache@v1
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('.jbang/dependency_cache.txt') }}
+          key: ${{ runner.os }}-maven-${{ hashFiles('*.java') }}
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: jbang
