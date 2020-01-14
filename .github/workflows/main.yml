@@ -2,13 +2,13 @@ on: [push]
 
 jobs:
     jbang:
-        runs-on: ubuntu-latest
-        name: A job to run jbang
-    steps:
-        - name: checkout
-          uses: actions/checkout@v1
-        - name: jbang
-          uses: maxandersen/jbang-action@v1
-          with:
-            script: https://raw.githubusercontent.com/maxandersen/jbang/master/examples/classpath_example.java
-            args: "my world"
+      runs-on: ubuntu-latest
+      name: A job to run jbang
+      steps:
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: jbang
+        uses: maxandersen/jbang-action@v1
+        with:
+          script: https://raw.githubusercontent.com/maxandersen/jbang/master/examples/classpath_example.java
+          args: "my world"
