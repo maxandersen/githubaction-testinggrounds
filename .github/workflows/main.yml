@@ -10,19 +10,14 @@ jobs:
       - uses: actions/cache@v1
         with:
           path: ~/.jbang
-          key: ${{ runner.os }}-maven-${{ hashFiles('*.java') }}
+          key: ${{ runner.os }}-jbang-${{ hashFiles('*.java') }}
           restore-keys: |
             ${{ runner.os }}-jbang-
-      - uses: actions/cache@v1
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('*.java') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
       - name: jbang
         uses: maxandersen/jbang-action@v1
         with:
           script: createissue.java
           args: "my world"
         env:
+          JBANG_REPO: ~/.jbang/repository
           GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
