@@ -8,7 +8,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: jbang
-        uses: maxandersen/jbang-action@master
+        uses: maxandersen/jbang-action@v1
         with:
           script: createissue.java
           args: "my world"
