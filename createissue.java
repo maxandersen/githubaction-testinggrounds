@@ -1,6 +1,5 @@
 //usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS org.kohsuke:github-api:jar:1.101
-
+//DEPS org.kohsuke:github-api:1.101
 import static java.lang.System.*;
 
 public class createissue {
