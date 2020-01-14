@@ -10,5 +10,5 @@ jobs:
       - name: jbang
         uses: maxandersen/jbang-action@master
         with:
-          script: https://raw.githubusercontent.com/maxandersen/jbang/master/examples/classpath_example.java
+          script: createissue.java
           args: "my world"
