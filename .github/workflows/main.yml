@@ -9,7 +9,7 @@ jobs:
         uses: actions/checkout@v1
       - uses: actions/cache@v1
         with:
-          path: ~/.jbang
+          path: /root/.jbang
           key: ${{ runner.os }}-jbang-${{ hashFiles('*.java') }}
           restore-keys: |
             ${{ runner.os }}-jbang-
@@ -19,5 +19,5 @@ jobs:
           script: createissue.java
           args: "my world"
         env:
-          JBANG_REPO: ~/.jbang/repository
+          JBANG_REPO: /root/.jbang/repository
           GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
