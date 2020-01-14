@@ -12,3 +12,5 @@ jobs:
         with:
           script: createissue.java
           args: "my world"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
