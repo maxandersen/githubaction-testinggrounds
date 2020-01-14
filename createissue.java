@@ -1,6 +1,10 @@
+
 //usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS org.kohsuke:github-api:1.101
 import static java.lang.System.*;
+
+import java.util.Arrays;
+
 import org.kohsuke.github.*;
 
 public class createissue {
@@ -12,7 +16,10 @@ public class createissue {
 
         var repo = github.getRepository(getenv("GITHUB_REPOSITORY"));
 
-        repo.createIssue("Testing create issue from jbang").body(args.toString()).create();
+        var message = "Test message with home set to " + getProperty("user.home");
+        message = message + "\n" + Arrays.toString(args); 
+        var x = repo.createIssue("Testing create issue from jbang").body(message).create();
+        out.println(x.getHtmlUrl());
 
     }
 }
