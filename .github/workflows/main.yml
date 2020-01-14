@@ -7,6 +7,18 @@ jobs:
       steps:
       - name: checkout
         uses: actions/checkout@v1
+      - uses: actions/cache@v1
+        with:
+          path: ~/.jbang
+          key: ${{ runner.os }}-maven-${{ hashFiles('.jbang/dependency_cache.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-jbang-
+      - uses: actions/cache@v1
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('.jbang/dependency_cache.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
       - name: jbang
         uses: maxandersen/jbang-action@v1
         with:
