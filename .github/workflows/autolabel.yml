@@ -7,9 +7,9 @@ jobs:
       runs-on: ubuntu-latest
       name: auto label
       steps:
-      - name: checkout
-        uses: actions/checkout@v1
       - name: issuelabeler
         uses: docker://maxandersen/jbang-issuelabeler
         env:
           GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
+          CONFIG: https://raw.githubusercontent.com/maxandersen/githubaction-testinggrounds/master/.github/autoissuelabeler.yml
+          
