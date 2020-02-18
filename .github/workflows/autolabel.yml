@@ -10,6 +10,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: issuelabeler
-        uses: maxandersen/jbang-issuelabeler@master
+        uses: docker://maxandersen/jbang-issuelabeler
         env:
           GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
