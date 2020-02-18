@@ -5,7 +5,7 @@ on:
 jobs:
     jbang:
       runs-on: ubuntu-latest
-      name: A job to run jbang
+      name: auto label
       steps:
       - name: checkout
         uses: actions/checkout@v1
