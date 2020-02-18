@@ -1,24 +1,15 @@
-on: 
-  issues: 
-    types: [opened]
+on:
+    issues:
+        type: [opened]
 
 jobs:
     jbang:
       runs-on: ubuntu-latest
-      name: Auto label
+      name: A job to run jbang
       steps:
       - name: checkout
         uses: actions/checkout@v1
-      - uses: actions/cache@v1
-        with:
-          path: /root/.jbang
-          key: ${{ runner.os }}-jbang-${{ hashFiles('*.java') }}
-          restore-keys: |
-            ${{ runner.os }}-jbang-
-      - name: jbang
-        uses: maxandersen/jbang-action@v0.16.1
-        with:
-          script: issue_labeler.java
+      - name: issuelabeler
+        uses: maxandersen/jbang-issuelabeler@master
         env:
-          JBANG_REPO: /root/.jbang/repository
           GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
