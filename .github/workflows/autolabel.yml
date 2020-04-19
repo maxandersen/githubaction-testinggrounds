@@ -1,6 +1,6 @@
 on:
     issues:
-        type: [opened]
+        type: [opened, edited, labeled]
 
 jobs:
     jbang:
