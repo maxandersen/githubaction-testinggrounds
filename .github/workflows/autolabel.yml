@@ -10,7 +10,7 @@ jobs:
 #      - name: Debug Action
 #        uses: hmarr/debug-action@v1.0.0
        - name: Index Catalog
-         uses: jbangdev/jbang-action@v0.35.0
+         uses: jbangdev/jbang-action@v0.35.1
          with:
            script: version
            args: --verbose 
