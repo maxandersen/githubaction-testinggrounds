@@ -12,5 +12,5 @@ jobs:
        - name: Index Catalog
          uses: jbangdev/jbang-action@v0.35.0
          with:
-           script: properties@jbangdev
-           args: . ./app/registry.json
+           script: version
+           args: --verbose 
