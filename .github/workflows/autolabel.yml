@@ -10,13 +10,13 @@ jobs:
 #      - name: Debug Action
 #        uses: hmarr/debug-action@v1.0.0
       - name: jbang
-      uses: jbangdev/jbang-action@v0.35.0
+        uses: jbangdev/jbang-action@v0.35.0
 	  with:
-		script: properties@jbangdev
-		args: ""
+	   script: properties@jbangdev
+       	   args: ""
 	  env:
-		JBANG_REPO: /root/.jbang/repository
-		GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
+           JBANG_REPO: /root/.jbang/repository
+	   GITHUB_TOKEN: ${{ secrets.ISSUE_GITHUB_TOKEN }}
       - name: epicmaker
         uses: docker://maxandersen/jbang-epic-maker
         env:
