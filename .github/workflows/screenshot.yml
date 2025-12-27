@@ -1,15 +1,28 @@
-name: jbang-help-real-screenshots
+name: jbang-help-real-desktop-screenshots
 
 on:
   workflow_dispatch:
   push:
 
+# ------------------------------------------------------------
+# Centralized timing knobs.
+# If screenshots are blank or partially rendered:
+#   - increase WINDOW_APPEAR_DELAY
+#   - increase HOLD_BEFORE_SCREENSHOT
+#   - increase TERMINAL_HOLD_TIME
+# ------------------------------------------------------------
+env:
+  WINDOW_APPEAR_DELAY: 4          # seconds to wait for terminal window to appear
+  HOLD_BEFORE_SCREENSHOT: 4       # seconds to wait before taking screenshot
+  TERMINAL_HOLD_TIME: 10          # how long the terminal stays open after output
+
 jobs:
-  shots:
+  screenshot:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+
     runs-on: ${{ matrix.os }}
 
     permissions:
@@ -22,61 +35,106 @@ jobs:
       - name: Setup JBang
         uses: jbangdev/setup-jbang@v0.1.1
 
-      # ---------------- LINUX (real Xvfb desktop + ImageMagick import) ----------------
-      - name: Install deps (Linux)
+      # ------------------------------------------------------------
+      # LINUX
+      # ------------------------------------------------------------
+      - name: Install GUI + screenshot deps (Linux)
         if: runner.os == 'Linux'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb xterm imagemagick
 
-      - name: Create desktop screenshot (Linux)
+      - name: Run jbang --help in xterm and screenshot desktop (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
+
+          JBANG_PATH="$(command -v jbang)"
+          echo "JBANG_PATH=$JBANG_PATH"
+
           Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
           export DISPLAY=:99
           sleep 1
 
-          xterm -geometry 120x40 -fa Monospace -fs 12 -e bash -lc \
-            "jbang --help; echo; echo '[xterm] holding for screenshot...'; sleep 5" &
-          sleep 1
+          xterm -hold -geometry 120x40 -fa Monospace -fs 14 -bg black -fg white \
+            -e bash -lc "
+              echo '===== RUNNING JBANG HELP =====';
+              echo 'jbang path: $JBANG_PATH';
+              echo;
+              '$JBANG_PATH' --help;
+              echo;
+              echo '===== DONE (holding) =====';
+              sleep ${TERMINAL_HOLD_TIME}
+            " &
+
+          sleep ${WINDOW_APPEAR_DELAY}
 
           import -silent -window root desktop-Linux.png
           ls -la desktop-Linux.png
 
-      # ---------------- macOS (best effort) ----------------
-      - name: Create desktop screenshot (macOS)
+      # ------------------------------------------------------------
+      # macOS
+      # ------------------------------------------------------------
+      - name: Run jbang --help in Terminal and screenshot desktop (macOS)
         if: runner.os == 'macOS'
         shell: bash
-        continue-on-error: true
         run: |
-          # Try to open Terminal without AppleEvents
-          cat > jbang-help.command <<'EOF'
+          set -euo pipefail
+
+          JBANG_PATH="$(command -v jbang)"
+          echo "JBANG_PATH=$JBANG_PATH"
+
+          cat > jbang-help.command <<EOF
           #!/bin/bash
-          jbang --help
+          echo "===== RUNNING JBANG HELP ====="
+          echo "jbang path: $JBANG_PATH"
           echo
-          echo "[Terminal] holding for screenshot..."
-          sleep 5
+          "$JBANG_PATH" --help
+          echo
+          echo "===== DONE (holding) ====="
+          sleep ${TERMINAL_HOLD_TIME}
           EOF
+
           chmod +x jbang-help.command
           open -a Terminal ./jbang-help.command
-          sleep 2
 
-          # Best effort: may fail on hosted runners if no display session exists
+          sleep ${WINDOW_APPEAR_DELAY}
+
           screencapture -x desktop-macOS.png
           ls -la desktop-macOS.png
 
-      # ---------------- WINDOWS (real desktop via .NET) ----------------
-      - name: Create desktop screenshot (Windows)
+      # ------------------------------------------------------------
+      # WINDOWS
+      # ------------------------------------------------------------
+      - name: Run jbang --help in cmd.exe and screenshot desktop (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Start-Process cmd.exe -ArgumentList '/k', 'jbang --help & echo. & echo [cmd] holding for screenshot... & timeout /t 5'
-          Start-Sleep -Seconds 1
+          $ErrorActionPreference = "Stop"
+
+          $jbang = (Get-Command jbang).Source
+          Write-Host "JBANG: $jbang"
+
+          $cmd = @"
+          mode con: cols=120 lines=40 ^
+          & echo ===== RUNNING JBANG HELP ===== ^
+          & echo jbang path: $jbang ^
+          & echo. ^
+          & `"$jbang`" --help ^
+          & echo. ^
+          & echo ===== DONE (holding) ===== ^
+          & timeout /t $env:TERMINAL_HOLD_TIME
+"@
+
+          Start-Process cmd.exe -ArgumentList '/k', $cmd
+
+          Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
 
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
+
           $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
           $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
           $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -84,13 +142,17 @@ jobs:
           $bmp.Save("desktop-Windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
           $g.Dispose()
           $bmp.Dispose()
-          dir desktop-Windows.png
 
-      # ---------------- Upload (with retry-ish behavior) ----------------
-      - name: Upload screenshots
+          Get-ChildItem desktop-Windows.png | Format-List
+
+      # ------------------------------------------------------------
+      # Upload artifacts
+      # ------------------------------------------------------------
+      - name: Upload screenshot artifact
         uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ runner.os }}
           path: desktop-${{ runner.os }}.png
-          if-no-files-found: warn
-          retention-days: 3
+          retention-days: 7
+          if-no-files-found: error
+          
