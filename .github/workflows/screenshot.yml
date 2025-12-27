@@ -1,4 +1,4 @@
-name: jbang-help-desktop-screenshot
+name: jbang-help-real-screenshot
 
 on:
   workflow_dispatch:
@@ -12,62 +12,75 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
+    # Helps with upload-artifact / actions APIs on some repos
+    permissions:
+      contents: read
+      actions: write
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup JBang
         uses: jbangdev/setup-jbang@v0.1.1
 
-      # -------- LINUX (Ubuntu) --------
-      - name: Install X11 tools (Linux)
+      # ---------- Linux ----------
+      - name: Install deps (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xterm imagemagick
+          sudo apt-get install -y xvfb xterm imagemagick x11-xserver-utils
 
-      - name: Start virtual desktop + show jbang help (Linux)
+      - name: Launch terminal (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          # Start an X11 display
           Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
-
-          # Give Xvfb a moment
           sleep 1
-
-          # Launch a visible terminal window that keeps showing output
-          DISPLAY=:99 xterm -geometry 120x40 -fa Monospace -fs 12 -e bash -lc "jbang --help; echo; echo '[xterm] keeping window open for screenshot...'; sleep 20" &
+          DISPLAY=:99 xterm -geometry 120x40 -fa Monospace -fs 12 -e bash -lc \
+            "jbang --help; echo; echo '[xterm] holding for screenshot...'; sleep 20" &
           sleep 2
 
-      # -------- macOS --------
-      - name: Open Terminal + show jbang help (macOS)
+      # ---------- macOS (no osascript) ----------
+      - name: Launch Terminal via .command (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          # Open Terminal and run the command in a new window/tab
-          osascript -e 'tell application "Terminal" to activate'
-          osascript -e 'tell application "Terminal" to do script "jbang --help; echo; echo \"[Terminal] keeping window open for screenshot...\"; sleep 20"'
+          cat > jbang-help.command <<'EOF'
+          #!/bin/bash
+          set -e
+          jbang --help
+          echo
+          echo "[Terminal] holding for screenshot..."
+          sleep 20
+          EOF
+          chmod +x jbang-help.command
+          open -a Terminal ./jbang-help.command
           sleep 2
 
-      # -------- Windows --------
-      - name: Open cmd.exe + show jbang help (Windows)
+      # ---------- Windows ----------
+      - name: Launch cmd.exe (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # Start a real cmd window and keep it open long enough to screenshot
-          Start-Process cmd.exe -ArgumentList '/k', 'jbang --help & echo. & echo [cmd] keeping window open for screenshot... & timeout /t 20'
+          Start-Process cmd.exe -ArgumentList '/k', 'jbang --help & echo. & echo [cmd] holding for screenshot... & timeout /t 20'
           Start-Sleep -Seconds 2
 
-      # -------- Screenshot (all OSes) --------
+      # ---------- Screenshot ----------
       - name: Take desktop screenshot
         uses: OrbitalOwen/desktop-screenshot-action@0.1
         with:
           file-name: desktop-${{ runner.os }}.jpg
 
-      - name: Upload screenshot artifact
+      - name: Verify screenshot exists
+        shell: bash
+        run: |
+          ls -la
+
+      - name: Upload screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-screenshot-${{ runner.os }}
+          name: desktop-${{ runner.os }}
           path: desktop-${{ runner.os }}.jpg
+          retention-days: 3
