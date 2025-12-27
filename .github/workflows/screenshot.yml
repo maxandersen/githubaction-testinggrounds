@@ -5,16 +5,15 @@ on:
   push:
 
 # ------------------------------------------------------------
-# Centralized timing knobs.
-# If screenshots are blank or partially rendered:
-#   - increase WINDOW_APPEAR_DELAY
-#   - increase HOLD_BEFORE_SCREENSHOT
-#   - increase TERMINAL_HOLD_TIME
+# Central timing knobs (edit here, not inside scripts)
+#
+# If screenshots are blank/empty:
+# - increase WINDOW_APPEAR_DELAY (terminal window appears later than expected)
+# - increase TERMINAL_HOLD_TIME (terminal closes before we capture)
 # ------------------------------------------------------------
 env:
-  WINDOW_APPEAR_DELAY: 4          # seconds to wait for terminal window to appear
-  HOLD_BEFORE_SCREENSHOT: 4       # seconds to wait before taking screenshot
-  TERMINAL_HOLD_TIME: 10          # how long the terminal stays open after output
+  WINDOW_APPEAR_DELAY: 5      # seconds to wait after launching the terminal window
+  TERMINAL_HOLD_TIME: 12      # seconds the terminal stays open after printing output
 
 jobs:
   screenshot:
@@ -25,6 +24,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Helps artifact upload be less flaky in some repos/org settings.
     permissions:
       contents: read
       actions: write
@@ -35,9 +35,13 @@ jobs:
       - name: Setup JBang
         uses: jbangdev/setup-jbang@v0.1.1
 
-      # ------------------------------------------------------------
-      # LINUX
-      # ------------------------------------------------------------
+      # ============================================================
+      # LINUX: Xvfb provides a real (virtual) desktop that ImageMagick
+      # can screenshot. We open xterm on that desktop and run jbang.
+      #
+      # IMPORTANT: use absolute path to jbang, because GUI processes
+      # can have a different PATH than the non-GUI workflow shell.
+      # ============================================================
       - name: Install GUI + screenshot deps (Linux)
         if: runner.os == 'Linux'
         shell: bash
@@ -54,10 +58,12 @@ jobs:
           JBANG_PATH="$(command -v jbang)"
           echo "JBANG_PATH=$JBANG_PATH"
 
+          # Start a virtual X desktop
           Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
           export DISPLAY=:99
           sleep 1
 
+          # -hold keeps xterm open so output is still visible when we capture.
           xterm -hold -geometry 120x40 -fa Monospace -fs 14 -bg black -fg white \
             -e bash -lc "
               echo '===== RUNNING JBANG HELP =====';
@@ -69,14 +75,20 @@ jobs:
               sleep ${TERMINAL_HOLD_TIME}
             " &
 
+          # Give the window time to appear and paint text.
           sleep ${WINDOW_APPEAR_DELAY}
 
+          # Screenshot the virtual desktop root window
           import -silent -window root desktop-Linux.png
           ls -la desktop-Linux.png
 
-      # ------------------------------------------------------------
-      # macOS
-      # ------------------------------------------------------------
+      # ============================================================
+      # macOS: Avoid AppleScript (often blocked by runner privacy/TCC).
+      # Instead, create a .command file and open it with Terminal.
+      #
+      # IMPORTANT: embed absolute jbang path; Terminal may not inherit
+      # the same PATH as the workflow step.
+      # ============================================================
       - name: Run jbang --help in Terminal and screenshot desktop (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -98,16 +110,24 @@ jobs:
           EOF
 
           chmod +x jbang-help.command
+
+          # Launch a real Terminal window
           open -a Terminal ./jbang-help.command
 
+          # Give Terminal time to appear and paint text.
           sleep ${WINDOW_APPEAR_DELAY}
 
+          # Full desktop screenshot (includes Terminal)
           screencapture -x desktop-macOS.png
           ls -la desktop-macOS.png
 
-      # ------------------------------------------------------------
-      # WINDOWS
-      # ------------------------------------------------------------
+      # ============================================================
+      # WINDOWS: Start a real cmd.exe window, run jbang, keep it open,
+      # then take a desktop screenshot via .NET.
+      #
+      # IMPORTANT: resolve absolute jbang path; GUI cmd.exe may not see
+      # the same PATH as the workflow shell.
+      # ============================================================
       - name: Run jbang --help in cmd.exe and screenshot desktop (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -117,6 +137,7 @@ jobs:
           $jbang = (Get-Command jbang).Source
           Write-Host "JBANG: $jbang"
 
+          # Use a here-string; terminator must be on its own line: "@
           $cmd = @"
           mode con: cols=120 lines=40 ^
           & echo ===== RUNNING JBANG HELP ===== ^
@@ -126,12 +147,15 @@ jobs:
           & echo. ^
           & echo ===== DONE (holding) ===== ^
           & timeout /t $env:TERMINAL_HOLD_TIME
-"@
+          "@
 
+          # /k keeps cmd.exe open so content remains visible for screenshot
           Start-Process cmd.exe -ArgumentList '/k', $cmd
 
+          # Give the window time to appear and paint text.
           Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
 
+          # Take a real desktop screenshot
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
 
@@ -145,9 +169,9 @@ jobs:
 
           Get-ChildItem desktop-Windows.png | Format-List
 
-      # ------------------------------------------------------------
-      # Upload artifacts
-      # ------------------------------------------------------------
+      # ============================================================
+      # Upload: one artifact per OS
+      # ============================================================
       - name: Upload screenshot artifact
         uses: actions/upload-artifact@v4
         with:
@@ -155,4 +179,3 @@ jobs:
           path: desktop-${{ runner.os }}.png
           retention-days: 7
           if-no-files-found: error
-          
