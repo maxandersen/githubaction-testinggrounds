@@ -35,6 +35,12 @@ jobs:
       - name: Setup JBang
         uses: jbangdev/setup-jbang@v0.1.1
 
+      - name: Pre-warm JBang
+        #shell: bash
+        run: |
+          # Force JBang to bootstrap Java + caches *before* we open a GUI terminal.
+          # Without this, `jbang --help` can appear to hang with no output.
+          jbang --version
       # ============================================================
       # LINUX: Xvfb provides a real (virtual) desktop that ImageMagick
       # can screenshot. We open xterm on that desktop and run jbang.
