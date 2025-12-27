@@ -132,42 +132,43 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
+            $ErrorActionPreference = "Stop"
 
-          $jbang = (Get-Command jbang).Source
-          Write-Host "JBANG: $jbang"
+            $jbang = (Get-Command jbang).Source
+            Write-Host "JBANG: $jbang"
 
-          # Use a here-string; terminator must be on its own line: "@
-          $cmd = @"
-          mode con: cols=120 lines=40 ^
-          & echo ===== RUNNING JBANG HELP ===== ^
-          & echo jbang path: $jbang ^
-          & echo. ^
-          & `"$jbang`" --help ^
-          & echo. ^
-          & echo ===== DONE (holding) ===== ^
-          & timeout /t $env:TERMINAL_HOLD_TIME
-          "@
+            # IMPORTANT:
+            # Passing a multiline command string to `cmd.exe /k` is flaky (quoting, &, ^, newlines).
+            # Writing a .cmd file avoids all of that and makes the terminal output reliable.
+            $script = @"
+            @echo off
+            mode con: cols=120 lines=40
+            echo ===== RUNNING JBANG HELP =====
+            echo jbang path: $jbang
+            echo.
+            "$jbang" --help
+            echo.
+            echo ===== DONE (holding) =====
+            timeout /t %TERMINAL_HOLD_TIME%
+            "@
 
-          # /k keeps cmd.exe open so content remains visible for screenshot
-          Start-Process cmd.exe -ArgumentList '/k', $cmd
+            $cmdFile = Join-Path $env:RUNNER_TEMP "jbang-help.cmd"
+            Set-Content -Path $cmdFile -Value $script -Encoding ASCII
 
-          # Give the window time to appear and paint text.
-          Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
+            # Keep the window open after running the script, so it stays visible for the screenshot.
+            Start-Process cmd.exe -ArgumentList '/k', "`"$cmdFile`""
 
-          # Take a real desktop screenshot
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
+            Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
 
-          $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-          $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          $g = [System.Drawing.Graphics]::FromImage($bmp)
-          $g.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bmp.Size)
-          $bmp.Save("desktop-Windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
-          $g.Dispose()
-          $bmp.Dispose()
-
-          Get-ChildItem desktop-Windows.png | Format-List
+            Add-Type -AssemblyName System.Windows.Forms
+            Add-Type -AssemblyName System.Drawing
+            $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+            $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bmp.Size)
+            $bmp.Save("desktop-Windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose()
+            $bmp.Dispose()
 
       # ============================================================
       # Upload: one artifact per OS
