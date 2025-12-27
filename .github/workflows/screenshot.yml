@@ -132,43 +132,44 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-            $ErrorActionPreference = "Stop"
+          $ErrorActionPreference = "Stop"
 
-            $jbang = (Get-Command jbang).Source
-            Write-Host "JBANG: $jbang"
+          # IMPORTANT:
+          # On Windows `Get-Command jbang` may resolve to jbang.ps1 (PowerShell shim).
+          # When launched from cmd.exe, .ps1 can be "opened" by file association (Notepad)
+          # rather than executed. Force the cmd wrapper instead.
+          $jbangCmd = (Get-Command jbang.cmd -ErrorAction Stop).Source
+          Write-Host "JBANG CMD: $jbangCmd"
 
-            # IMPORTANT:
-            # Passing a multiline command string to `cmd.exe /k` is flaky (quoting, &, ^, newlines).
-            # Writing a .cmd file avoids all of that and makes the terminal output reliable.
-            $script = @"
-            @echo off
-            mode con: cols=120 lines=40
-            echo ===== RUNNING JBANG HELP =====
-            echo jbang path: $jbang
-            echo.
-            "$jbang" --help
-            echo.
-            echo ===== DONE (holding) =====
-            timeout /t %TERMINAL_HOLD_TIME%
-            "@
+          $cmdFile = Join-Path $env:RUNNER_TEMP "jbang-help.cmd"
 
-            $cmdFile = Join-Path $env:RUNNER_TEMP "jbang-help.cmd"
-            Set-Content -Path $cmdFile -Value $script -Encoding ASCII
+          @"
+          @echo off
+          mode con: cols=120 lines=40
+          echo ===== RUNNING JBANG HELP =====
+          echo jbang cmd path: $jbangCmd
+          echo.
+          call "$jbangCmd" --help
+          echo.
+          echo ===== DONE (holding) =====
+          timeout /t %TERMINAL_HOLD_TIME%
+          "@ | Set-Content -Path $cmdFile -Encoding ASCII
 
-            # Keep the window open after running the script, so it stays visible for the screenshot.
-            Start-Process cmd.exe -ArgumentList '/k', "`"$cmdFile`""
+          # Run our .cmd in a real window and keep it open (/k)
+          Start-Process cmd.exe -ArgumentList '/k', "`"$cmdFile`""
 
-            Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
+          Start-Sleep -Seconds $env:WINDOW_APPEAR_DELAY
 
-            Add-Type -AssemblyName System.Windows.Forms
-            Add-Type -AssemblyName System.Drawing
-            $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-            $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bmp.Size)
-            $bmp.Save("desktop-Windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose()
-            $bmp.Dispose()
+          # Screenshot desktop
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+          $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bmp.Size)
+          $bmp.Save("desktop-Windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          $g.Dispose()
+          $bmp.Dispose()
 
       # ============================================================
       # Upload: one artifact per OS
